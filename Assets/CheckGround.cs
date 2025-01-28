@@ -1,10 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.Burst.Intrinsics;
 using UnityEngine;
 
 public class CheckGround : MonoBehaviour
 {
+    private const float DISTANCE_THRESHOLD = 0.02f;
+
     private RaycastHit2D[] raycastHits = new RaycastHit2D[6];
 
     [SerializeField]
@@ -34,15 +37,13 @@ public class CheckGround : MonoBehaviour
     private Vector3 castOrigin;
     private Vector3 castDirection;
     private List<Vector3> hitPoints = new List<Vector3>();
+    private bool isGrounded = false;
 
     void Update()
     {
         PerformRaycast();
     }
 
-    /// <summary>
-    /// Raycastを実行し、ヒットしたポイントを記録するメソッド
-    /// </summary>
     private void PerformRaycast()
     {
         if (collider2D == null)
@@ -51,67 +52,66 @@ public class CheckGround : MonoBehaviour
             return;
         }
 
-        // レイキャストの起点と方向
         castOrigin = transform.position + offset;
         castDirection = -transform.up;
 
-        // コライダーの厚みを計算
         float colliderThickness = collider2D.bounds.extents.y;
-
-        // ヒット情報をクリア
         hitPoints.Clear();
 
-        // レイキャストを実行
+        // Raycastの実行
         var hits = Physics2D.BoxCastNonAlloc(castOrigin, size, 0, castDirection, raycastHits, distance + colliderThickness, layer);
 
         if (hits > 0)
         {
             float closestDistance = Mathf.Infinity;
-            float contactAngle = 0f;
+            float minAngle = Mathf.Infinity;
 
             for (int i = 0; i < hits; i++)
             {
-                // ヒット箇所を記録
                 hitPoints.Add(raycastHits[i].point);
 
-                // 符号付き距離を計算
-                var hitToPlayer = transform.position - new Vector3(raycastHits[i].point.x, raycastHits[i].point.y, 0.0f);
-                float dist = Vector2.Dot(hitToPlayer, raycastHits[i].normal);
-                float adjustedDistance = dist - colliderThickness; // コライダーの厚みを引く
+                // ヒット箇所からコライダーまでの垂直距離を計算
+                Vector2 hitToOrigin = raycastHits[i].point - (Vector2)castOrigin;
+                float verticalDistance = Vector2.Dot(hitToOrigin, castDirection.normalized);
+
+                // コライダーの厚みを差し引く
+                float adjustedDistance = verticalDistance - colliderThickness;
                 float angle = Vector2.Angle(transform.up, raycastHits[i].normal);
 
-                if (adjustedDistance < closestDistance && angle < angleLimit)
+                if ((adjustedDistance < 0 && adjustedDistance > closestDistance) || // 負の距離の場合は最大値（0に近いもの）を選択
+                    (adjustedDistance >= 0 && adjustedDistance <= closestDistance)) // 正の距離の場合は最小値を選択
                 {
                     closestDistance = adjustedDistance;
-                    contactAngle = angle;
+                    minAngle = angle;
+                    Debug.DrawRay(raycastHits[i].point, raycastHits[i].normal * adjustedDistance, Color.red);
                 }
             }
-
-            // テキストに距離と角度を表示
-            text.text = $"Distance: {closestDistance:F2}m\nAngle: {contactAngle:F2}° \n";
-            text.text += closestDistance <= 0.02f && closestDistance >= Mathf.Epsilon && contactAngle < angleLimit ? "IsGrounded" : "";
+            isGrounded = IsGrounded(closestDistance, minAngle);
+            text.text = $"Distance: {closestDistance}m\nAngle: {minAngle:F3}°\nLimitAngle:{angleLimit + Mathf.Epsilon:F3}\n";
+            text.text += $"angle: {Mathf.Approximately(minAngle, angleLimit) || minAngle < angleLimit}\n";
+            text.text += $"dist: {(closestDistance - Physics2D.defaultContactOffset) <= DISTANCE_THRESHOLD}\n";
+            text.text += isGrounded ? "IsGrounded" : "";
         }
         else
         {
-            // ヒットしなかった場合は空欄にする
             text.text = "No ground detected";
         }
+    }
+
+    private bool IsGrounded(float distance, float angle)
+    {
+        return ((distance - Physics2D.defaultContactOffset) <= DISTANCE_THRESHOLD) &&
+                (Mathf.Approximately(angle, angleLimit) || angle < angleLimit);
     }
 
     private void OnDrawGizmos()
     {
         if (!showGizmos) return;
 
-        // レイキャストの範囲を青色で表示
         Gizmos.color = Color.blue;
         Gizmos.DrawWireCube(transform.position + offset, size);
 
-        // レイキャストの方向を緑色で表示
-        Gizmos.color = Color.green;
-        Gizmos.DrawRay(castOrigin, castDirection * distance);
-
-        // ヒット箇所を赤色で表示
-        Gizmos.color = Color.red;
+        Gizmos.color = isGrounded ? Color.green : Color.red;
         foreach (var point in hitPoints)
         {
             Gizmos.DrawSphere(point, 0.05f);
