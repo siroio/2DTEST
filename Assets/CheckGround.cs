@@ -36,6 +36,7 @@ public class CheckGround : MonoBehaviour
 
     private Vector3 castOrigin;
     private Vector3 castDirection;
+    private Vector2 normal;
     private List<Vector3> hitPoints = new List<Vector3>();
     private bool isGrounded = false;
 
@@ -65,6 +66,7 @@ public class CheckGround : MonoBehaviour
         {
             float closestDistance = Mathf.Infinity;
             float minAngle = Mathf.Infinity;
+            normal = Vector2.up;
 
             for (int i = 0; i < hits; i++)
             {
@@ -83,6 +85,7 @@ public class CheckGround : MonoBehaviour
                 {
                     closestDistance = adjustedDistance;
                     minAngle = angle;
+                    normal = raycastHits[i].normal;
                     Debug.DrawRay(raycastHits[i].point, raycastHits[i].normal * adjustedDistance, Color.red);
                 }
             }
