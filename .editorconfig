@@ -1,0 +1,30 @@
+# Unity EditorConfig settings
+
+# 全てのファイルに対する共通設定
+[*]
+indent_style = space      # インデントはスペース
+indent_size = 4           # インデント幅4
+end_of_line = lf          # 改行コードはLF
+insert_final_newline = true  # 最後に空行を追加
+trim_trailing_whitespace = true  # 行末の不要な空白を削除
+charset = utf-8           # エンコーディングはUTF-8
+max_line_length = 120     # 最大行長120文字
+
+# C# スクリプトファイル用設定
+[*.cs]
+# C#での設定（例えば、アクセス修飾子や命名規則など）
+dotnet_naming_rule.private_fields.prefix = _  # プライベートフィールドに _ を付ける
+dotnet_naming_rule.methods.balanced_case = true  # メソッド名の命名ルールを調整
+csharp_new_line_before_members = true  # メンバー前に改行を追加
+csharp_space_after_cast = true  # キャスト後にスペースを追加
+
+# JavaScript/TypeScriptファイル用設定
+[*.{js,ts}]
+indent_size = 2           # インデント幅2
+max_line_length = 100     # 最大行長100文字
+quote_type = double       # ダブルクオートを使用
+
+# HTML/CSSファイル用設定
+[*.{html,css}]
+indent_size = 2           # インデント幅2
+max_line_length = 120     # 最大行長120文字
