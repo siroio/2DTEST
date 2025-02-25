@@ -3,13 +3,6 @@ using UnityEngine;
 
 namespace TarodevController
 {
-    /// <summary>
-    /// Hey!
-    /// Tarodev here. I built this controller as there was a severe lack of quality & free 2D controllers out there.
-    /// I have a premium version on Patreon, which has every feature you'd expect from a polished controller. Link: https://www.patreon.com/tarodev
-    /// You can play and compete for best times here: https://tarodev.itch.io/extended-ultimate-2d-controller
-    /// If you hve any questions or would like to brag about your score, come to discord: https://discord.gg/tarodev
-    /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
     public class PlayerController : MonoBehaviour, IPlayerController
     {
@@ -19,6 +12,14 @@ namespace TarodevController
         private FrameInput _frameInput;
         private Vector2 _frameVelocity;
         private bool _cachedQueryStartInColliders;
+
+        [SerializeField] private float offset = 0.8f;  // Example height value, adjust as needed
+        [SerializeField] private float dist = 0.5f;          // Raycast distance to detect stairs
+        [SerializeField] private LayerMask Stairs;           // LayerMask to identify stairs
+        [SerializeField] private float StairHeight = 0.5f;   // Height to move up when climbing stairs
+        [SerializeField] private float climbspeed = 5f;      // Speed at which the player climbs stairs
+        [SerializeField] private float forwardiv = 1f;       // Factor to adjust the forward movement while climbing stairs
+
 
         #region Interface
 
@@ -73,7 +74,7 @@ namespace TarodevController
             HandleJump();
             HandleDirection();
             HandleGravity();
-
+            HandleStairs();
             ApplyMovement();
         }
 
@@ -184,6 +185,35 @@ namespace TarodevController
         }
 
         #endregion
+
+#region Stairs
+        private void HandleStairs()
+        {
+            if (!_grounded && FrameInput.x != 0) return;
+
+            // プレイヤーの位置を取得
+            Vector2 heightOffset = new Vector2(0, offset);
+
+            // Raycast で階段の位置を検出
+            RaycastHit2D hit = Physics2D.Raycast(_rb.position + heightOffset, FrameInput.x * transform.right, dist, Stairs);
+
+            if (hit.collider != null)
+            {
+                // プレイヤーの上に持ち上げる
+                if (_frameInput.Move.sqrMagnitude > Mathf.Epsilon)  // プレイヤーが前に移動している時
+                {
+                    Vector3 climbPos = new Vector3(transform.position.x, transform.position.y + StairHeight);
+
+                    // 目標位置にスムーズに移動
+                    transform.position = Vector3.Lerp(transform.position, climbPos + transform.right / forwardiv, climbspeed * Time.deltaTime);
+                }
+            }
+
+            // デバッグ用にRayの可視化
+            Debug.DrawRay(_rb.position + heightOffset, dist * FrameInput.x * transform.right, Color.yellow);
+        }
+#endregion
+
 
         private void ApplyMovement() => _rb.velocity = _frameVelocity;
 
